@@ -132,27 +132,24 @@ class ConsoleView:
             return current_value
 
     @staticmethod
-    def display_diagnostic_report(patient_id: int, score: int, category: str) -> None:
-        """Displays a structured, receipt-style diagnostic risk report with decorative borders and confidentiality warnings."""
-        width = 48
-        asterisk_border = "*" * width
-        double_border = "=" * width
-        hyphen_border = "-" * width
-
-        print("\n" + double_border)
-        print("         OFFICIAL CLINICAL DIAGNOSTIC RECEIPT       ")
-        print("              METABOLIC RISK ASSESSMENT             ")
-        print(double_border)
-        print(f"  Patient ID         :  #{patient_id}")
-        print(f"  Cumulative Score   :  {score} pts")
-        print(f"  Risk Category      :  {category.upper()}")
-        print(hyphen_border)
-        print("  Assessment Status  :  COMPLETED")
-        print("  Verification Mode  :  AUTOMATED RULE ENGINE")
-        print(asterisk_border)
-        print("  *** WARNING: STRICTLY CONFIDENTIAL MEDICAL RECORD ***  ")
-        print("  THIS DOCUMENT CONTAINS PROTECTED HEALTH INFORMATION (PHI) ")
-        print(double_border)
+    def display_diagnostic_report(patient_id: int, score: int, category: str, abnormal_metrics: List[str] = None) -> None:
+        """Displays the formatted risk report and a summary of elevated metrics[cite: 2]."""
+        print("\n" + "*"*40 + "\n          DIAGNOSTIC RISK REPORT\n" + "*"*40)
+        print(f" Patient ID:       {patient_id}\n Cumulative Score: {score} pts\n Risk Category:    {category.upper()}")
+        
+        if abnormal_metrics is not None:
+            print("-" * 40)
+            print(" Clinical Summary: ")
+            if abnormal_metrics:
+                print(" The following metrics are outside healthy")
+                print(" boundaries and contributed to the score:")
+                for item in abnormal_metrics:
+                    print(f"   * {item}")
+            else:
+                print(" All evaluated health metrics are within")
+                print(" normal, healthy boundaries (0 points).")
+                
+        print("*"*40)
 
 # =====================================================================
 # 4. ORCHESTRATION LAYER (CONTROLLER)
@@ -176,15 +173,16 @@ class ConsoleController:
             else:
                 self.view.display_error("Invalid menu selection. Please choose 1 or 2.")
 
-    def handle_assessment_workflow(self) -> None:
+   def handle_assessment_workflow(self) -> None:
+        """Coordinates the patient risk assessment workflow, including metric breakdowns[cite: 2]."""
         valid_ids = self.model.get_all_ids()
         self.view.display_patient_ids(valid_ids)
-
+        
         id_input = self.view.prompt_patient_id()
         if not id_input.isdigit():
             self.view.display_error("Patient ID must be a numeric integer value.")
             return
-
+            
         patient_id = int(id_input)
         patient_metrics = self.model.get_patient(patient_id)
         if not patient_metrics:
@@ -192,17 +190,24 @@ class ConsoleController:
             return
 
         self.view.display_profile(patient_id, patient_metrics)
-
+        
         if self.view.prompt_modification_choice():
             updated_metrics = {}
             for metric, current_val in patient_metrics.items():
                 updated_metrics[metric] = self.view.prompt_metric_update(metric, current_val)
             self.model.update_patient(patient_id, updated_metrics)
-            patient_metrics = updated_metrics
+            patient_metrics = updated_metrics 
 
         score, category = self.service.evaluate_patient_risk(patient_metrics)
-        self.view.display_diagnostic_report(patient_id, score, category)
-
+        
+        # Identify metrics outside healthy boundaries for the clinical summary breakdown
+        abnormal_metrics = [
+            f"{m} (Value: {v})" 
+            for m, v in patient_metrics.items() 
+            if self.service.calculate_metric_score(m, v) > 0
+        ]
+        
+        self.view.display_diagnostic_report(patient_id, score, category, abnormal_metrics)
 
 # =====================================================================
 # AUTOMATED 3-TIER TEST SUITE
