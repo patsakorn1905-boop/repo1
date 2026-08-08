@@ -124,10 +124,26 @@ class ConsoleView:
 
     @staticmethod
     def display_diagnostic_report(patient_id: int, score: int, category: str) -> None:
-        print("\n" + "*"*40 + "\n          DIAGNOSTIC RISK REPORT\n" + "*"*40)
-        print(f" Patient ID:       {patient_id}\n Cumulative Score: {score} pts\n Risk Category:    {category.upper()}")
-        print("*"*40)
+        """Displays a structured, receipt-style diagnostic risk report with decorative borders and confidentiality warnings."""
+        width = 48
+        asterisk_border = "*" * width
+        double_border = "=" * width
+        hyphen_border = "-" * width
 
+        print("\n" + double_border)
+        print("         OFFICIAL CLINICAL DIAGNOSTIC RECEIPT       ")
+        print("              METABOLIC RISK ASSESSMENT             ")
+        print(double_border)
+        print(f"  Patient ID         :  #{patient_id}")
+        print(f"  Cumulative Score   :  {score} pts")
+        print(f"  Risk Category      :  {category.upper()}")
+        print(hyphen_border)
+        print("  Assessment Status  :  COMPLETED")
+        print("  Verification Mode  :  AUTOMATED RULE ENGINE")
+        print(asterisk_border)
+        print("  *** WARNING: STRICTLY CONFIDENTIAL MEDICAL RECORD ***  ")
+        print("  THIS DOCUMENT CONTAINS PROTECTED HEALTH INFORMATION (PHI) ")
+        print(double_border)
 
 # =====================================================================
 # 4. ORCHESTRATION LAYER (CONTROLLER)
