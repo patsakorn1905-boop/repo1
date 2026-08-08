@@ -111,10 +111,21 @@ class ConsoleView:
         print(f"\n[ERROR] {message}")
 
     @staticmethod
-    def display_profile(patient_id: int, metrics: Dict[str, float]) -> None:
+    def display_profile(patient_id: int, metrics: Dict[str, float], clinic_averages: Dict[str, float] = None) -> None:
+        """Displays the patient's clinical profile, comparing metrics against clinic averages[cite: 2]."""
         print(f"\n--- Clinical Profile for Patient {patient_id} ---")
         for metric, val in metrics.items():
-            print(f" * {metric}: {val}")
+            if clinic_averages and metric in clinic_averages:
+                avg = clinic_averages[metric]
+                if val > avg:
+                    comparison = "ABOVE"
+                elif val < avg:
+                    comparison = "BELOW"
+                else:
+                    comparison = "EQUAL"
+                print(f" * {metric}: {val} ({comparison} clinic average of {avg:.1f})")
+            else:
+                print(f" * {metric}: {val}")
 
     @staticmethod
     def prompt_modification_choice() -> bool:
@@ -173,8 +184,8 @@ class ConsoleController:
             else:
                 self.view.display_error("Invalid menu selection. Please choose 1 or 2.")
 
-   def handle_assessment_workflow(self) -> None:
-        """Coordinates the patient risk assessment workflow, including metric breakdowns[cite: 2]."""
+  def handle_assessment_workflow(self) -> None:
+        """Coordinates the assessment workflow, now calculating clinic averages for the profile[cite: 2]."""
         valid_ids = self.model.get_all_ids()
         self.view.display_patient_ids(valid_ids)
         
@@ -189,7 +200,16 @@ class ConsoleController:
             self.view.display_error(f"Patient ID {patient_id} does not exist in the database.")
             return
 
-        self.view.display_profile(patient_id, patient_metrics)
+        # Calculate clinical averages for each metric across all registered patients
+        all_patients = [self.model.get_patient(pid) for pid in valid_ids]
+        clinic_averages = {}
+        if all_patients:
+            for metric in patient_metrics.keys():
+                values = [p[metric] for p in all_patients if metric in p]
+                if values:
+                    clinic_averages[metric] = sum(values) / len(values)
+
+        self.view.display_profile(patient_id, patient_metrics, clinic_averages)
         
         if self.view.prompt_modification_choice():
             updated_metrics = {}
@@ -199,15 +219,7 @@ class ConsoleController:
             patient_metrics = updated_metrics 
 
         score, category = self.service.evaluate_patient_risk(patient_metrics)
-        
-        # Identify metrics outside healthy boundaries for the clinical summary breakdown
-        abnormal_metrics = [
-            f"{m} (Value: {v})" 
-            for m, v in patient_metrics.items() 
-            if self.service.calculate_metric_score(m, v) > 0
-        ]
-        
-        self.view.display_diagnostic_report(patient_id, score, category, abnormal_metrics)
+        self.view.display_diagnostic_report(patient_id, score, category)
 
 # =====================================================================
 # AUTOMATED 3-TIER TEST SUITE
